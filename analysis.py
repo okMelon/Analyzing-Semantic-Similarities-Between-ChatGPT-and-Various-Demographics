@@ -9,8 +9,10 @@ import numpy as np
 from scipy.spatial.distance import cosine
 
 client = OpenAI()
-RESPONSES = "ChatGPT\MainProject\Data\embedds.json"
-COMPARISON = "ChatGPT\MainProject\Data\compared.json"
+RESPONSES = "Data\\responses.json"
+EMBEDS = "Data\embeds.json"
+COMPARED = "Data\compared.json"
+CUSTOMQS = "Data\customsqs.json"
 
 
 def load_json(filename):
@@ -24,24 +26,42 @@ def save_json(user, filename):
         json.dump(user, file, indent=4)
 
 # This function will search all responses for this question q to see if they are the same as the response inputted
-def has_embedding(q, number):
+# If a response matches perfectly, the embedding for it will be fetched
+def has_embedding(users_response, question_number):
     responses = load_json(RESPONSES)
+    embeds = load_json(EMBEDS)
+    low_input = users_response.lower()
     for response in responses:
-        if response[number].lower() == q.lower():
+        if response[question_number].lower() == low_input:
             print("Cheaper route found: ")
-            return response[number + "e"]
-    return get_embedding(q)
+            cheaper_uid = response.get("uid")
+            for entry in embeds:
+                if entry["uid"] == cheaper_uid:
+                    return entry[question_number + "e"]
+    return get_embedding(users_response)
 
-# Sets the uid of all json objects
-def fetchuid():
-    responses = load_json(RESPONSES)
-    for idx, obj in enumerate(responses):
-        obj['uid'] = idx + 1
-    save_json(responses, RESPONSES)
+# Gets the next uid from uid_counter.txt (an external file that saves what count we are at)
+def get_next_uid():
+    try:
+        # Open in append+read mode to create the file if it doesn’t exist
+        with open("uid_counter.txt", "a+") as file:
+            file.seek(0)  # Move cursor to the beginning of the file
+            content = file.read()
 
-# Main actual comparer. Grabs the two values and sends em through calculate simularity
+            # If the file is empty, start at 0
+            uid = int(content) if content else 0
+    except ValueError:
+        # If content is invalid, reset to 0
+        uid = 0
+    # Write the incremented UID back to the file
+    with open("uid_counter.txt", "w") as file:
+        file.write(str(uid + 1))
+    return uid + 1
+
+
+# Main actual comparer. Grabs the two embeddings of the given questions and sends em through calculate simularity
 def compare(uid1, uid2, q):
-    responses = load_json(RESPONSES)
+    responses = load_json(EMBEDS)
     for response in responses:
         if response.get("uid") == uid1:
             r1e = np.array(response.get(q))
@@ -74,6 +94,7 @@ def compare_all(uid1, uid2):
 # Once embeddings are collected
 def add_user(name, age, gender_identity, ethnicity, education, income, q1, q2, q3, q4, q5, q6, q7, q8):
     responses = load_json(RESPONSES)
+    embeds = load_json(EMBEDS)
 
     q1e = has_embedding(q1, "q1")
     q2e = has_embedding(q2, "q2")
@@ -84,7 +105,10 @@ def add_user(name, age, gender_identity, ethnicity, education, income, q1, q2, q
     q7e = has_embedding(q7, "q7")
     q8e = has_embedding(q8, "q8")
 
+    uid = get_next_uid()
+
     new_user = {
+        "uid": uid,
         "name": name,
         "age": age,
         "gender": gender_identity,
@@ -98,7 +122,10 @@ def add_user(name, age, gender_identity, ethnicity, education, income, q1, q2, q
         "q5": q5,
         "q6": q6,
         "q7": q7,
-        "q8": q8,
+        "q8": q8
+        }
+    new_embedding = {
+        "uid": uid,
         "q1e": q1e,
         "q2e": q2e,
         "q3e": q3e,
@@ -107,10 +134,11 @@ def add_user(name, age, gender_identity, ethnicity, education, income, q1, q2, q
         "q6e": q6e,
         "q7e": q7e,
         "q8e": q8e
-        }
+    }
     responses.append(new_user)
+    embeds.append(new_embedding)
     save_json(responses, RESPONSES)
-    fetchuid()
+    save_json(embeds, EMBEDS)
 
 def manual_ask():
     n = input("What's your name? ").strip()
