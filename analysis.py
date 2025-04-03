@@ -14,13 +14,14 @@ EMBEDS = "Data\embeds.json"
 COMPARED = "Data\compared.json"
 CUSTOMQS = "Data\customsqs.json"
 
-
+# json loader method
 def load_json(filename):
     if not os.path.exists(filename):
         return []
     with open(filename, "r") as file:
         return json.load(file)
 
+# json saver method :)
 def save_json(user, filename):
     with open(filename, "w") as file:
         json.dump(user, file, indent=4)
@@ -61,15 +62,16 @@ def get_next_uid():
 
 # Main actual comparer. Grabs the two embeddings of the given questions and sends em through calculate simularity
 def compare(uid1, uid2, q):
-    responses = load_json(EMBEDS)
+    responses = load_json("Data\embeds.json")
     for response in responses:
         if response.get("uid") == uid1:
             r1e = np.array(response.get(q))
         if response.get("uid") == uid2:
             r2e = np.array(response.get(q))
-    return calculate_similarity(r1e, r2e)
+    return calculate_similarity(r1e, r2e) 
 
-def compare_all(uid1, uid2):
+# Compares the responses from uid1 and uid2. If stored is true, it will store the responses under uid2.
+def compare_all(uid1, uid2, stored):
     q1sim = compare(uid1, uid2, "q1e")
     q2sim = compare(uid1, uid2, "q2e")
     q3sim = compare(uid1, uid2, "q3e")
@@ -78,16 +80,47 @@ def compare_all(uid1, uid2):
     q6sim = compare(uid1, uid2, "q6e")
     q7sim = compare(uid1, uid2, "q7e")
     q8sim = compare(uid1, uid2, "q8e")
+    qtsim = (q1sim + q2sim + q3sim + q4sim + q5sim + q6sim + q7sim +q8sim)/8
+    if stored == True:
+        compared = load_json(COMPARED)
+        new_compared = {
+            "uid": uid2,
+            "r1c": q1sim, 
+            "r2c": q2sim,
+            "r3c": q3sim,
+            "r4c": q4sim,
+            "r5c": q5sim,
+            "r6c": q6sim,
+            "r7c": q7sim,
+            "r8c": q8sim,
+            "rtc": qtsim
+        }
+        compared.append(new_compared)
+        save_json(compared, COMPARED)
+    else:
+        print(f"\nQuestion one has a similarity of {q1sim:.3f}")
+        print(f"\nQuestion two has a similarity of {q2sim:.3f}")
+        print(f"\nQuestion three has a similarity of {q3sim:.3f}")
+        print(f"\nQuestion four has a similarity of {q4sim:.3f}")
+        print(f"\nQuestion five has a similarity of {q5sim:.3f}")
+        print(f"\nQuestion six has a similarity of {q6sim:.3f}")
+        print(f"\nQuestion seven has a similarity of {q7sim:.3f}")
+        print(f"\nQuestion eight has a similarity of {q8sim:.3f}")
+        print(f"\nOverall similarity is given a score of {qtsim:.4f}")
 
-    print(f"\nQuestion one has a similarity of {q1sim:.3f}")
-    print(f"\nQuestion two has a similarity of {q2sim:.3f}")
-    print(f"\nQuestion three has a similarity of {q3sim:.3f}")
-    print(f"\nQuestion four has a similarity of {q4sim:.3f}")
-    print(f"\nQuestion five has a similarity of {q5sim:.3f}")
-    print(f"\nQuestion six has a similarity of {q6sim:.3f}")
-    print(f"\nQuestion seven has a similarity of {q7sim:.3f}")
-    print(f"\nQuestion eight has a similarity of {q8sim:.3f}")
-    print(f"\nOverall similarity is given a score of {(q1sim + q2sim + q3sim + q4sim + q5sim + q6sim + q7sim + q8sim)/8:.4f}")
+# For the sake of main_app
+def compare_every(uid1, uid2):
+    q1sim = compare(uid1, uid2, "q1e")
+    q2sim = compare(uid1, uid2, "q2e")
+    q3sim = compare(uid1, uid2, "q3e")
+    q4sim = compare(uid1, uid2, "q4e")
+    q5sim = compare(uid1, uid2, "q5e")
+    q6sim = compare(uid1, uid2, "q6e")
+    q7sim = compare(uid1, uid2, "q7e")
+    q8sim = compare(uid1, uid2, "q8e")
+    qtsim = (q1sim + q2sim + q3sim + q4sim + q5sim + q6sim + q7sim +q8sim)/8
+    return q1sim, q2sim, q3sim, q4sim, q5sim, q6sim, q7sim, q8sim, qtsim
+    
 
 
 # This is the core function that will take the users input and store it as a json while converting responses to embeddings
@@ -124,6 +157,8 @@ def add_user(name, age, gender_identity, ethnicity, education, income, q1, q2, q
         "q7": q7,
         "q8": q8
         }
+    responses.append(new_user)
+    save_json(responses, RESPONSES)
     new_embedding = {
         "uid": uid,
         "q1e": q1e,
@@ -135,10 +170,11 @@ def add_user(name, age, gender_identity, ethnicity, education, income, q1, q2, q
         "q7e": q7e,
         "q8e": q8e
     }
-    responses.append(new_user)
     embeds.append(new_embedding)
-    save_json(responses, RESPONSES)
     save_json(embeds, EMBEDS)
+    # Since we are adding a user, we will also calculate their similarity to ChatGPT
+    compare_all(1, uid, True)
+    
 
 def manual_ask():
     n = input("What's your name? ").strip()
@@ -174,11 +210,50 @@ def calculate_similarity(text1, text2):
     similarity = 1 - cosine(text1, text2)  # 1 - cosine distance
     return similarity
 
+# For custom questions, we need to be able to ask ChatGPT the new questions.
+# Adding token count as an input later on would be good. That way I could change the amount of sentences the user wants generated.
+def ask_gpt(question):
+    client = OpenAI()
+
+    completion = client.chat.completions.create(
+        model="gpt-4o-mini-2024-07-18",
+        messages=[
+            {"role": "developer", "content": "You are a helpful assistant."},
+            {
+                "role": "user",
+                "content": question
+            }
+        ],
+        temperature=0,
+        max_tokens=100
+    )
+
+    return completion.choices[0].message.content
+
+# For asking ChatGPT questions not listed in the survey and comparing the response to the question poser's response
+# When adding token count as an input to ask_gpt() method, also add it as an input here.
+def bonus_questions(question, human_response):
+    chatgpt_response = str(ask_gpt(question))
+    chatgpt_embedding = get_embedding(chatgpt_response)
+    human_embedding = get_embedding(human_response)
+    similarity = calculate_similarity(chatgpt_embedding, human_embedding)
+
+    custom = load_json(CUSTOMQS)
+    new_custom = {
+        "Question": question,
+        "Human Response": human_response,
+        "ChatGPT Response": chatgpt_response,
+        "Similarity": similarity
+    }
+    custom.append(new_custom)
+    save_json(custom, CUSTOMQS)
+    return chatgpt_response, similarity
+
 def main():
     while True:
         print("\nChatGPT Analysis")
         print("\n1. Manual new response")
-        print("\n2. Import responses from CSV")
+        print("\n2. Create a new question and check similarity")
         print("\n3. Compare two responses")
         print("\n4. Exit")
         
@@ -186,9 +261,10 @@ def main():
         if choice == "1":
             manual_ask()
         elif choice == "2":
-            print("\nNot ready yet")
+            chatgpt_response, similarity = bonus_questions(input("What question do you have?"), input("What is your response to the question?"))
+            print(f"ChatGPT response: {chatgpt_response}\nSimilarity: {similarity}")
         elif choice == "3":
-            compare_all(int(input("Provide the first uid: ")), int(input("Provide the second uid: ")))
+            compare_all(int(input("Provide the first uid: ")), int(input("Provide the second uid: ")), False)
         elif choice == "4":
             break
         else:
