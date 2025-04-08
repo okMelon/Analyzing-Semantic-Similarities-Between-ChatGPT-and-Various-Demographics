@@ -383,6 +383,19 @@ def create_graph_data():
             print(f"\nUnlisted: {r['uid']}, income: {r['income']}")
     return demos
 
+def get_names_with_uids():
+    responses = load_json(RESPONSES)
+    name_uid_pairs = []
+    for r in responses:
+        try:
+            uid = r["uid"]
+            name = str(r["name"])
+            name_uid_pairs.append((uid, name))
+        except (KeyError, ValueError, TypeError):
+            print(f"Error reading entry: {r}")
+    return name_uid_pairs
+
+
 # Take the average rc (response compared) value of demos uid grouping
 # uids will be a passed in value like demos[4][16]
 # rc will be response compared choice. Input like "rtc" or "r1c"
