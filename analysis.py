@@ -13,6 +13,7 @@ RESPONSES = "Data\\responses.json"
 EMBEDS = "Data\embeds.json"
 COMPARED = "Data\compared.json"
 CUSTOMQS = "Data\customsqs.json"
+LOWBAR = 0
 
 # json loader method
 def load_json(filename):
@@ -108,8 +109,8 @@ def compare_all(uid1, uid2, stored):
         print(f"\nQuestion eight has a similarity of {q8sim:.3f}")
         print(f"\nOverall similarity is given a score of {qtsim:.4f}")
 
-# For the sake of main_app
 def compare_every(uid1, uid2):
+    print(f"Comparing {uid1} and {uid2}, on q1 embeddings")
     q1sim = compare(uid1, uid2, "q1e")
     q2sim = compare(uid1, uid2, "q2e")
     q3sim = compare(uid1, uid2, "q3e")
@@ -120,8 +121,6 @@ def compare_every(uid1, uid2):
     q8sim = compare(uid1, uid2, "q8e")
     qtsim = (q1sim + q2sim + q3sim + q4sim + q5sim + q6sim + q7sim +q8sim)/8
     return q1sim, q2sim, q3sim, q4sim, q5sim, q6sim, q7sim, q8sim, qtsim
-    
-
 
 # This is the core function that will take the users input and store it as a json while converting responses to embeddings
 # Once embeddings are collected
@@ -249,13 +248,167 @@ def bonus_questions(question, human_response):
     save_json(custom, CUSTOMQS)
     return chatgpt_response, similarity
 
+
+
+def create_graph_data():
+    responses = load_json(RESPONSES)
+    demos = [[[],[],[],[],[],[],[]],[[],[],[],[],[]],[[],[],[],[],[],[],[],[]],[[],[],[],[],[],[]],[[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]]]
+    # Three dimensions
+    # First dimension is either 0 - age, 1 - gender, 2 - ethnicity, 3 - education, 4 - income
+    for r in responses:
+        # Age 0: 18-24, 1: 25-34, 2: 35-44, 3: 45-54, 4: 55-64, 5: 65+, 6: unlisted
+        try:
+            int_age = int(r["age"])
+            if 18 <= int_age <= 24:
+                demos[0][0].append(r["uid"])
+            elif 25 <= int_age <= 34:
+                demos[0][1].append(r["uid"])
+            elif 35 <= int_age <= 44:
+                demos[0][2].append(r["uid"])
+            elif 45 <= int_age <= 54:
+                demos[0][3].append(r["uid"])
+            elif 55 <= int_age <= 64:
+                demos[0][4].append(r["uid"])
+            elif int_age >= 65:
+                demos[0][5].append(r["uid"])
+            else:
+                demos[0][6].append(r["uid"])
+                print(f"\nCorrect value type. Not in range of responses: {r['uid']}, age: {r['age']}")
+            print(f"Age as int is: {int_age}")
+        except (ValueError, TypeError):
+            demos[0][6].append(r["uid"])
+            print(f"\nUnlisted: {r['uid']}, age: {r['age']}")
+        
+        
+        # Gender 0: Male, 1: Female, 2: Non-binary, 3: Prefer not to say/Other, 4: unlisted
+        try:
+            if r["gender"] == "Male":
+                demos[1][0].append(r["uid"])
+            elif r["gender"] == "Female":
+                demos[1][1].append(r["uid"])
+            elif r["gender"] == "Non-binary":
+                demos[1][2].append(r["uid"])
+            elif r["gender"] == "Prefer not to say/Other":
+                demos[1][3].append(r["uid"])
+            else:
+                demos[1][4].append(r["uid"])
+                print(f"\nCorrect value type. Not in range of responses: {r['uid']}, gender: {r['gender']}")
+        except (ValueError, TypeError):
+            demos[1][4].append(r["uid"])
+            print(f"\nUnlisted: {r['uid']}, gender: {r['gender']}")
+                
+        # Ethnicity 0: White/Caucasian, 1: Asian - Eastern, 2: Asian - Indian, 3: Hispanic, 4: Black, 5: Native American, 6: Prefer not to answer, 7: unlisted
+        try:
+            if r["ethnicity"] == "White/Caucasian":
+                demos[2][0].append(r["uid"])
+            elif r["ethnicity"] == "Asian - Eastern":
+                demos[2][1].append(r["uid"])
+            elif r["ethnicity"] == "Asian - Indian":
+                demos[2][2].append(r["uid"])
+            elif r["ethnicity"] == "Hispanic":
+                demos[2][3].append(r["uid"])
+            elif r["ethnicity"] == "Black":
+                demos[2][4].append(r["uid"])
+            elif r["ethnicity"] == "Native American":
+                demos[2][5].append(r["uid"])
+            elif r["ethnicity"] == "Prefer not to answer":
+                demos[2][6].append(r["uid"])
+            else:
+                demos[2][7].append(r["uid"])
+                print(f"\nCorrect value type. Not in range of responses: {r['uid']}, ethnicity: {r['ethnicity']}")
+        except (ValueError, TypeError):
+            demos[2][7].append(r["uid"])
+            print(f"\nUnlisted: {r['uid']}, ethnicity: {r['ethnicity']}")
+        # Education 0: Highschool Diploma, 1: Bachelor's Degree, 2: Master's Degree, 3: Prefer not to answer, 4: Lower than highschool level education, 5: unlisted
+        try:
+            if r["education"] == "Highschool Diploma":
+                demos[3][0].append(r["uid"])
+            elif r["education"] == "Bachelor's Degree":
+                demos[3][1].append(r["uid"])
+            elif r["education"] == "Master's Degree":
+                demos[3][2].append(r["uid"])
+            elif r["education"] == "Prefer not to answer":
+                demos[3][3].append(r["uid"])
+            elif r["education"] == "Lower than highschool level education":
+                demos[3][4].append(r["uid"])
+            else:
+                demos[3][5].append(r["uid"])
+                print(f"\nCorrect value type. Not in range of responses: {r['uid']}, income: {r['education']}")
+        except (ValueError, TypeError):
+            demos[3][5].append(r["uid"])
+            print(f"\nUnlisted: {r['uid']}, education: {r['education']}")
+        # Income 0: $0 - $4,999, 1: $5,000 - $7,499, 2: $7,500 - $9,999, 3: $10,000 - $12,499, 4: $12,500 - $14,999, 5: $15,000 - $19,999
+        # 6: $20,000 - $24,999, 7: $25,000 - $29,999, 8: $30,000 - $34,999, 9: $35,000 - $39,999, 10: $40,000 - $49,999, 11: $50,000 - $59,999 
+        # 12: $60,000 - $74,999, 13: $75,000 - $99,999, 14: $100,000 - $149,999, 15: $150,000+, 16: Prefer not to answer, 17: unlisted
+        try:
+            if r["income"] == "$0 - $4,999":
+                demos[4][0].append(r["uid"])
+            elif r["income"] == "$5,000 - $7,499":
+                demos[4][1].append(r["uid"])
+            elif r["income"] == "$7,500 - $9,999":
+                demos[4][2].append(r["uid"])
+            elif r["income"] == "$10,000 - $12,499":
+                demos[4][3].append(r["uid"])
+            elif r["income"] == "$12,500 - $14,999":
+                demos[4][4].append(r["uid"])
+            elif r["income"] == "$15,000 - $19,999":
+                demos[4][5].append(r["uid"])
+            elif r["income"] == "$20,000 - $24,999":
+                demos[4][6].append(r["uid"])
+            elif r["income"] == "$25,000 - $29,999":
+                demos[4][7].append(r["uid"])
+            elif r["income"] == "$30,000 - $34,999":
+                demos[4][8].append(r["uid"])
+            elif r["income"] == "$35,000 - $39,999":
+                demos[4][9].append(r["uid"])
+            elif r["income"] == "$40,000 - $49,999":
+                demos[4][10].append(r["uid"])
+            elif r["income"] == "$50,000 - $59,999":
+                demos[4][11].append(r["uid"])
+            elif r["income"] == "$60,000 - $74,999":
+                demos[4][12].append(r["uid"])
+            elif r["income"] == "$75,000 - $99,999":
+                demos[4][13].append(r["uid"])
+            elif r["income"] == "$100,000 - $149,999":
+                demos[4][14].append(r["uid"])
+            elif r["income"] == "$150,000+":
+                demos[4][15].append(r["uid"])
+            elif r["income"] == "Prefer not to answer":
+                demos[4][16].append(r["uid"])
+            else:
+                demos[4][17].append(r["uid"])
+                print(f"\nCorrect value type. Not in range of responses: {r['uid']}, income: {r['income']}")
+        except (ValueError, TypeError):
+            demos[4][17].append(r["uid"])
+            print(f"\nUnlisted: {r['uid']}, income: {r['income']}")
+    return demos
+
+# Take the average rc (response compared) value of demos uid grouping
+# uids will be a passed in value like demos[4][16]
+# rc will be response compared choice. Input like "rtc" or "r1c"
+def average_dem(uids, rc):
+    compared = load_json(COMPARED)
+    rcs = []
+    if uids == "":
+        return 0
+    for r in compared:
+        if r["uid"] in uids:
+            if r[rc] > LOWBAR:
+                rcs.append(r[rc])
+    try:
+        avg = sum(rcs)/len(rcs)
+    except (ZeroDivisionError):
+        return 0
+    return avg
+
 def main():
     while True:
         print("\nChatGPT Analysis")
         print("\n1. Manual new response")
         print("\n2. Create a new question and check similarity")
         print("\n3. Compare two responses")
-        print("\n4. Exit")
+        print("\n4. Generat graph data")
+        print("\n5. Exit")
         
         choice = input("Choose an option: ").strip()
         if choice == "1":
@@ -266,6 +419,9 @@ def main():
         elif choice == "3":
             compare_all(int(input("Provide the first uid: ")), int(input("Provide the second uid: ")), False)
         elif choice == "4":
+            demos = create_graph_data()
+            print (demos)
+        elif choice == "5":
             break
         else:
             print("\nInvalid choice. Try again.")
